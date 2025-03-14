@@ -9,5 +9,6 @@ dependencies = [
     "claudette>=0.1.4",
     "dotenv>=0.9.9",
     "jupyter>=1.1.1",
+    "opencv-python>=4.11.0.86",
     "torch>=2.6.0",
 ]
