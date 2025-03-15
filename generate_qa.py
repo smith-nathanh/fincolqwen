@@ -11,42 +11,7 @@ from datasets import Dataset, DatasetDict, load_dataset, load_from_disk
 from PIL import Image
 from tqdm import tqdm
 
-prompt_from_paper = """
-You are an assistant specialized in Multimodal RAG tasks. 
-
-The task is the following: given an image from a pdf page, you will have to generate questions that can be asked by a user to retrieve information from a large documentary corpus.
-
-The question should be relevant to the page, and should not be too specific or too general. The question should be about the subject of the page, and the answer needs to be found in the page.
-
-Remember that the question is asked by a user to get some information from a large documentary corpus that contains multimodal data. Generate a question that could be asked by a user without knowing the existence and the content of the corpus.
-
-Generate as well the answer to the question, which should be found in the page. And the format of the answer should be a list of words answering the question.
-
-Generate at most THREE pairs of questions and answers per page in a dictionary with the following format, answer ONLY this dictionary NOTHING ELSE:
-
-{
-    "questions": [
-        {
-            "question": "XXXXXX",
-            "answer": ["YYYYYY"]
-        },
-        {
-            "question": "XXXXXX",
-            "answer": ["YYYYYY"]
-        },
-        {
-            "question": "XXXXXX",
-            "answer": ["YYYYYY"]
-        }
-    ]
-}
-where XXXXXX is the question and ['YYYYYY'] is the corresponding list of answers that could be as long as needed.
-
-Note: If there are no questions to ask about the page, return an empty list. Focus on making relevant questions concerning the page.
-
-Here is the page:"""
-
-prompt = """
+prompt1 = """
 You are an assistant specialized in Multimodal RAG tasks.
 
 The task is the following: given an image from a pdf page, you will have to generate questions that could be asked by a user to retrieve information from a large documentary corpus - without them knowing precisely what is on a given page. So, don't say things like "what are the first three words on the page?" or "what is the title of the page?" Instead, try to ask questions that could be asked by someone who is trying to retreive some topically relevant information from a large corpus.
@@ -75,7 +40,88 @@ Generate at most THREE pairs of questions and answers per page in a dictionary w
 }
 where XXXXXX is the question and ['YYYYYY'] is the corresponding list of answers that could be as long as needed.
 
-IMPORTANT NOTE: If there is very little data on the page (e.g., it is simply a title page, appendix with little information, or blank page), return an empty list in the "questions" key. We will ultimately exclude these pages from the dataset when you return an empty list for these samples.
+IMPORTANT NOTES:
+Generate an empty list in the "questions" key for the following reasons:
+1. If there is very little data on the page (e.g., it is simply a title page, appendix with little information, or blank page)
+2. If the page is simply a list of references or citations
+3. If the page is a table of contents page or index page
+
+We will ultimately exclude these pages from the dataset when you return an empty list for these samples.
+
+Here is the page (respond with valid JSON only):"""
+
+
+prompt = """<task>
+You are an assistant specialized in Multimodal RAG tasks. Your job is to generate relevant questions and answers from document images, particularly focusing on finance-related content. You are role-playing as a user who doesn't know what documents are in the corpus so don't say things like "what are the first three words on the page?" or "what is the title of the page?" Instead, generate questions that could be asked by someone trying to retrieve specific information from a large corpus where the answer lies somewhere in the corpus, but they don't know where.
+
+## Task Description
+Given an image from a PDF page, generate questions that could be asked by a user to retrieve information from a large documentary corpus. The user wouldn't know exactly what's on a specific page.
+
+## Guidelines for Questions:
+- Make questions relevant to the page content
+- Focus on substantive information that would be useful for retrieval
+- Strike a balance between specificity and generality
+- Questions should be about the subject matter on the page
+- Answers must be findable within the page content
+- NEVER refer to "this page" or "this document" in the question because the user wouldn't be looking at a page and wouldn't frame their question that way.
+
+## Guidelines for Answers:
+- Provide answers as a list of strings, where each string is an answer and there are multiple strings only if there is more than one answer.
+
+## Output Format
+Generate at most THREE pairs of questions and answers per page in this exact JSON format:
+
+```json
+{
+    "questions": [
+        {
+            "question": "QUESTION TEXT HERE",
+            "answer": ["FIRST ANSWER", "SECOND PART TO THE ANSWER", "THIRD PART TO THE ANSWER"]
+        },
+        {
+            "question": "SECOND QUESTION TEXT",
+            "answer": ["ANSWER", "ANSWER", "ANSWER"]
+        },
+        {
+            "question": "THIRD QUESTION TEXT",
+            "answer": ["ANSWER"]
+        }
+    ]
+}
+```
+
+## Important: When to Return Empty Questions List
+Return `{"questions": []}` for any of these cases:
+- Pages with minimal content (title pages, blank pages, appendices with little information)
+- Pages that are primarily references or citations
+- Table of contents or index pages
+
+These pages will be excluded from the dataset.
+
+## Example
+For a page from a Federal Reserve report, you might generate questions like:
+
+```json
+{
+    "questions": [
+        {
+            "question": "What was the FOMC's decision on interest rates in the latest meeting?",
+            "answer": ["raised by 25 basis points", "to a target range of 5.25-5.50%"]
+        },
+        {
+            "question": "What economic indicators influenced the Federal Reserve's recent monetary policy decision?",
+            "answer": ["elevated inflation", "tight labor market", "robust consumer spending", "GDP growth of 2.4%"]
+        },
+        {
+            "question": "How does the Federal Reserve expect inflation to trend over the next year?",
+            "answer": ["gradual decline", "approaching 2% target", "by end of 2026", "contingent on appropriate policy restraint"]
+        }
+    ]
+}
+```
+
+Remember to return ONLY valid JSON with no explanation or additional text.
+</task>
 
 Here is the page (respond with valid JSON only):"""
 
